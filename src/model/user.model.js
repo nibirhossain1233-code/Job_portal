@@ -33,6 +33,10 @@ const userSchema = new mongoose.Schema(
     },
     otp:{
       type: String,
+    },
+    isEmailVerified: {
+      type: Boolean,
+      default: false
     }
   },
   {

@@ -1,7 +1,7 @@
 const apiResponse = (res, statusCode, message, data) => {
   return res
     .status(statusCode)
-    .json({ message, data, success: statusCode < 400 ? true : false });
+    .json({success: statusCode < 400 ? true : false , message, data});
 };
 
 module.exports = apiResponse;
