@@ -9,25 +9,33 @@ const bcrypt = require("bcrypt");
 exports.signupController = asyncHandler(async (req, res) => {
   let { name, email, password } = req.body;
 
-  bcrypt.hash(password, 10, async function (err, hash) {
-    if (err) {
-      apiResponse(res, 500, err || "Error hashing password");
-    } else {
-      const otp = uuidv4().toString().substring(0, 6);
+  let existingUser = await UserModel.findOne({email});
 
-      let user = new UserModel({
-        name,
-        email,
-        password: hash,
-        otp: otp,
-        otpExpire: Date.now() + 5 * 60 * 1000, // OTP expires in 5 minutes
-      });
+  if(existingUser){
+    apiResponse(res, 409,"User already exists!");
+  }else{
+    bcrypt.hash(password, 10, async function (err, hash) {
+      if (err) {
+        apiResponse(res, 500, err || "Error hashing password");
+      } else {
+        const otp = uuidv4().toString().substring(0, 6);
+  
+        let user = new UserModel({
+          name,
+          email,
+          password: hash,
+          otp: otp,
+          otpExpire: Date.now() + 5 * 60 * 1000, // OTP expires in 5 minutes
+        });
+  
+        await user.save();
+        sendEmail(email, otp, name);
+        apiResponse(res, 201, "Signup successful", user);
+      }
+    });
 
-      await user.save();
-      sendEmail(email, otp, name);
-      apiResponse(res, 201, "Signup successful", user);
-    }
-  });
+  }
+
 });
 
 exports.signinController = asyncHandler(async (req, res) => {
