@@ -93,3 +93,20 @@ exports.otpVerifyController = asyncHandler(async (req, res) => {
     apiResponse(res, 400, "Otp not matched");
   }
 });
+
+exports.otpResendController = asyncHandler(async (req, res) => {
+  let { email } = req.body;
+
+  let user = await UserModel.findOne({ email });
+  if (!user) {
+    return apiResponse(res, 404, "User not found");
+  }
+
+  const otp = uuidv4().toString().substring(0, 6);
+  user.otp = otp;
+  user.otpExpire = Date.now() + 5 * 60 * 1000; // OTP expires in 5 minutes
+
+  await user.save();
+  sendEmail(email, otp, user.name);
+  apiResponse(res, 200, "OTP resend successful");
+});
