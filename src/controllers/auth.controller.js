@@ -121,3 +121,86 @@ exports.otpResendController = asyncHandler(async (req, res) => {
     apiResponse(res, 200, "OTP resend successful");
   }
 });
+
+
+exports.forgotPasswordController = asyncHandler(async (req, res) => {
+  let { email } = req.body;
+
+  let user = await UserModel.findOne({ email });
+
+  if (!user) {
+    return apiResponse(res, 404, "User not found");
+  }
+
+  if (user.isVerified !== true) {
+    return apiResponse(
+      res,
+      400,
+      "Please verify your email address before resetting your password.",
+    );
+  }
+
+  if (user.otp && user.otpExpire > new Date()) {
+    return apiResponse(
+      res,
+      400,
+      "A verification code has already been sent. Please wait until it expires before requesting a new one.",
+    );
+  }
+
+  const otp = uuidv4().toString().substring(0, 6);
+
+  user.otp = otp;
+  user.otpExpire = Date.now() + 5 * 60 * 1000; // OTP expires in 5 minutes
+
+  await user.save();
+
+  sendEmail(email, otp, user.name, "forgot-password");
+
+  return apiResponse(res, 200, "Password reset OTP sent successfully");
+});
+
+
+exports.resetPasswordController = asyncHandler(async (req, res) => {
+  let { email, otp, newPassword } = req.body;
+
+  let user = await UserModel.findOne({ email }).select("+password");
+
+  if (!user) {
+    return apiResponse(res, 404, "User not found");
+  }
+
+  if (user.isVerified !== true) {
+    return apiResponse(
+      res,
+      400,
+      "Please verify your email address first.",
+    );
+  }
+
+  if (user.otp !== otp) {
+    return apiResponse(res, 400, "Invalid OTP");
+  }
+
+  if (user.otpExpire < new Date()) {
+    return apiResponse(
+      res,
+      400,
+      "The verification code has expired. Please request a new one.",
+    );
+  }
+
+  bcrypt.hash(newPassword, 10, async function (err, hash) {
+    if (err) {
+      return apiResponse(res, 500, err || "Error hashing password");
+    }
+
+    user.password = hash;
+    user.otp = null;
+    user.otpExpire = null;
+
+    await user.save();
+
+    return apiResponse(res, 200, "Password reset successful");
+  });
+});
