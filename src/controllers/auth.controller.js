@@ -29,7 +29,7 @@ exports.signupController = asyncHandler(async (req, res) => {
         });
 
         await user.save();
-        sendEmail(email, otp, name);
+        sendEmail(email, otp, name, "signup-otp");
         apiResponse(res, 201, "Signup successful", user);
       }
     });
@@ -77,11 +77,7 @@ exports.otpVerifyController = asyncHandler(async (req, res) => {
       user.isVerified = true;
 
       await user.save();
-      apiResponse(
-        res,
-        200,
-        "OTP verify successful",
-      )
+      apiResponse(res, 200, "OTP verify successful");
     } else {
       apiResponse(
         res,
@@ -99,14 +95,29 @@ exports.otpResendController = asyncHandler(async (req, res) => {
 
   let user = await UserModel.findOne({ email });
   if (!user) {
-    return apiResponse(res, 404, "User not found");
+    apiResponse(res, 404, "User not found");
+  } else {
+    if (user.isVerified === true) {
+      return apiResponse(
+        res,
+        400,
+        "Your account is already verified. No need to resend OTP.",
+      );
+      
+    } else if (user.otpExpire > new Date()) {
+      return apiResponse(
+        res,
+        400,
+        "Your current OTP is still valid. Please wait until it expires before requesting a new one.",
+      );
+    }
+
+    const otp = uuidv4().toString().substring(0, 6);
+    user.otp = otp;
+    user.otpExpire = Date.now() + 5 * 60 * 1000; // OTP expires in 5 minutes
+
+    await user.save();
+    sendEmail(email, otp, user.name, "otp-resend");
+    apiResponse(res, 200, "OTP resend successful");
   }
-
-  const otp = uuidv4().toString().substring(0, 6);
-  user.otp = otp;
-  user.otpExpire = Date.now() + 5 * 60 * 1000; // OTP expires in 5 minutes
-
-  await user.save();
-  sendEmail(email, otp, user.name);
-  apiResponse(res, 200, "OTP resend successful");
 });
