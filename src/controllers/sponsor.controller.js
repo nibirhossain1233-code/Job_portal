@@ -13,3 +13,8 @@ await sponsor.save();
 
 return res.status(201).json({ message: "Sponsor created successfully", sponsor });
 });
+
+exports.getSponsorsController = asyncHandler(async (req, res) => {
+    let sponsors = await Sponsor.find();
+    return res.status(200).json({ message: "Sponsors retrieved successfully", sponsors });
+})
