@@ -27,3 +27,14 @@ exports.deleteSponsorController = asyncHandler(async (req, res) => {
     }
     return res.status(200).json({ message: "Sponsor deleted successfully", sponsor });
 });
+
+exports.updateSponsorController = asyncHandler(async (req, res) => {
+    let { id } = req.params;
+    let { image } = req.body;
+
+    let sponsor = await Sponsor.findByIdAndUpdate({ _id: id }, { image }, { new: true });
+    if (!sponsor) {
+        return res.status(404).json({ message: "Sponsor not found" });
+    }
+    return res.status(200).json({ message: "Sponsor updated successfully", sponsor });
+});
